@@ -8,7 +8,7 @@ import (
 	"kestoeso/pkg/utils"
 	"strings"
 
-	api "github.com/external-secrets/external-secrets/apis/externalsecrets/v1alpha1"
+	api "github.com/external-secrets/external-secrets/apis/externalsecrets/v1beta1"
 	esmeta "github.com/external-secrets/external-secrets/apis/meta/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

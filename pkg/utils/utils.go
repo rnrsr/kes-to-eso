@@ -5,7 +5,7 @@ import (
 	"kestoeso/pkg/apis"
 	"os"
 
-	api "github.com/external-secrets/external-secrets/apis/externalsecrets/v1alpha1"
+	api "github.com/external-secrets/external-secrets/apis/externalsecrets/v1beta1"
 	esmeta "github.com/external-secrets/external-secrets/apis/meta/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -20,7 +20,7 @@ func IsKES(K apis.KESExternalSecret) bool {
 func NewSecretStore(secretStore bool) api.SecretStore {
 	d := api.SecretStore{}
 	d.TypeMeta = metav1.TypeMeta{
-		APIVersion: "external-secrets.io/v1alpha1",
+		APIVersion: "external-secrets.io/v1beta1",
 	}
 	if secretStore {
 		d.TypeMeta.Kind = "SecretStore"

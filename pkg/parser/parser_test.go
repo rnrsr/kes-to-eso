@@ -10,7 +10,7 @@ import (
 	"reflect"
 	"testing"
 
-	api "github.com/external-secrets/external-secrets/apis/externalsecrets/v1alpha1"
+	api "github.com/external-secrets/external-secrets/apis/externalsecrets/v1beta1"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	testclient "k8s.io/client-go/kubernetes/fake"
@@ -22,8 +22,8 @@ func TestNewEsoSecret(t *testing.T) {
 	if S.TypeMeta.Kind != "ExternalSecret" {
 		t.Errorf("want ExternalSecret got %v", S.TypeMeta.Kind)
 	}
-	if S.TypeMeta.APIVersion != "external-secrets.io/v1alpha1" {
-		t.Errorf("want external-secrets.io/v1alpha1 got %v", S.TypeMeta.APIVersion)
+	if S.TypeMeta.APIVersion != "external-secrets.io/v1beta1" {
+		t.Errorf("want external-secrets.io/v1beta1 got %v", S.TypeMeta.APIVersion)
 	}
 }
 
@@ -396,7 +396,8 @@ func TestBindVaultProvider(t *testing.T) {
 	}
 	auth := api.VaultAuth{}
 	p.Version = api.VaultKVStoreV2
-	p.Path = "kv"
+	kv := "kv"
+	p.Path = &kv
 	auth.Kubernetes = &kubeauth
 	p.Auth = auth
 	prov := api.SecretStoreProvider{}
@@ -483,15 +484,20 @@ func TestParseGenerals(t *testing.T) {
 		},
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "ExternalSecret",
-			APIVersion: "external-secrets.io/v1alpha1",
+			APIVersion: "external-secrets.io/v1beta1",
 		},
 		Spec: api.ExternalSecretSpec{
 			Target: api.ExternalSecretTarget{
 				Name:     "aws-secretsmanager",
 				Template: &api.ExternalSecretTemplate{},
 			},
-			DataFrom: []api.ExternalSecretDataRemoteRef{
-				{Key: "path/to/data"},
+			DataFrom: []api.ExternalSecretDataFromRemoteRef{
+				{
+					Extract: &api.ExternalSecretDataRemoteRef{
+						Key: "path/to/data",
+					},
+					Find: nil,
+				},
 			},
 			Data: []api.ExternalSecretData{
 				{
@@ -590,15 +596,20 @@ func TestParseSpecifics(t *testing.T) {
 		},
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "ExternalSecret",
-			APIVersion: "external-secrets.io/v1alpha1",
+			APIVersion: "external-secrets.io/v1beta1",
 		},
 		Spec: api.ExternalSecretSpec{
 			Target: api.ExternalSecretTarget{
 				Name:     "vault",
 				Template: &api.ExternalSecretTemplate{},
 			},
-			DataFrom: []api.ExternalSecretDataRemoteRef{
-				{Key: "vault-name/data/path/to/data"},
+			DataFrom: []api.ExternalSecretDataFromRemoteRef{
+				{
+					Extract: &api.ExternalSecretDataRemoteRef{
+						Key: "vault-name/data/path/to/data",
+					},
+					Find: nil,
+				},
 			},
 			Data: []api.ExternalSecretData{
 				{
@@ -630,15 +641,20 @@ func TestParseSpecifics(t *testing.T) {
 		},
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "ExternalSecret",
-			APIVersion: "external-secrets.io/v1alpha1",
+			APIVersion: "external-secrets.io/v1beta1",
 		},
 		Spec: api.ExternalSecretSpec{
 			Target: api.ExternalSecretTarget{
 				Name:     "vault",
 				Template: &api.ExternalSecretTemplate{},
 			},
-			DataFrom: []api.ExternalSecretDataRemoteRef{
-				{Key: "path/to/data"},
+			DataFrom: []api.ExternalSecretDataFromRemoteRef{
+				{
+					Extract: &api.ExternalSecretDataRemoteRef{
+						Key: "path/to/data",
+					},
+					Find: nil,
+				},
 			},
 			Data: []api.ExternalSecretData{
 				{
@@ -668,15 +684,20 @@ func TestParseSpecifics(t *testing.T) {
 		},
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "ExternalSecret",
-			APIVersion: "external-secrets.io/v1alpha1",
+			APIVersion: "external-secrets.io/v1beta1",
 		},
 		Spec: api.ExternalSecretSpec{
 			Target: api.ExternalSecretTarget{
 				Name:     "vault",
 				Template: &api.ExternalSecretTemplate{},
 			},
-			DataFrom: []api.ExternalSecretDataRemoteRef{
-				{Key: "path/to/data"},
+			DataFrom: []api.ExternalSecretDataFromRemoteRef{
+				{
+					Extract: &api.ExternalSecretDataRemoteRef{
+						Key: "path/to/data",
+					},
+					Find: nil,
+				},
 			},
 			Data: []api.ExternalSecretData{
 				{
@@ -814,6 +835,9 @@ func TestRoot(t *testing.T) {
 	}
 	resp := Root(ctx, &c)
 	for idx, testcase := range testCases {
+		// Force the names to match here too
+		testcase.secretStoreWants.Name = resp[idx].Ss.Name
+		testcase.externalSecretWants.Spec.SecretStoreRef.Name = resp[idx].Ss.Name
 		assert.Equal(t, testcase.externalSecretWants, resp[idx].Es)
 		if testcase.secretStoreWants != nil {
 			assert.Equal(t, *testcase.secretStoreWants, resp[idx].Ss)

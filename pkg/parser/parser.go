@@ -13,7 +13,7 @@ import (
 	"reflect"
 	"strings"
 
-	api "github.com/external-secrets/external-secrets/apis/externalsecrets/v1alpha1"
+	api "github.com/external-secrets/external-secrets/apis/externalsecrets/v1beta1"
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -73,7 +73,7 @@ func NewESOSecret() api.ExternalSecret {
 	d := api.ExternalSecret{}
 	d.TypeMeta = metav1.TypeMeta{
 		Kind:       "ExternalSecret",
-		APIVersion: "external-secrets.io/v1alpha1",
+		APIVersion: "external-secrets.io/v1beta1",
 	}
 	return d
 }
@@ -178,18 +178,11 @@ func bindProvider(ctx context.Context, S api.SecretStore, K apis.KESExternalSecr
 			p.Version = api.VaultKVStoreV1
 		} else {
 			p.Version = api.VaultKVStoreV2
-			preffix := ""
-			for _, data := range K.Spec.Data {
-				if preffix == "" {
-					pref := strings.Split(data.Key, "/")[0]
-					preffix = pref
-				}
-				if preffix != strings.Split(data.Key, "/")[0] {
-					log.Fatal("Failed to parse secret store for KES secret!")
-					return S, false
-				}
+			p.Path = getVaultProviderPath(K.Spec.Data, K.Spec.DataFrom)
+			if p.Path == new(string) {
+				// if there's no value in the data fields the secret must be empty
+				return S, false
 			}
-			p.Path = preffix
 		}
 		prov := api.SecretStoreProvider{}
 		prov.Vault = &p
@@ -219,6 +212,39 @@ func bindProvider(ctx context.Context, S api.SecretStore, K apis.KESExternalSecr
 	}
 }
 
+func getVaultProviderPath(data []apis.KESExternalSecretData, dataFrom []string) *string {
+	prefix, e := "", ""
+	if len(data) > 0 {
+		for _, d := range data {
+			if prefix == "" {
+				pref := strings.Split(d.Key, "/")[0]
+				prefix = pref
+			}
+			if prefix != strings.Split(d.Key, "/")[0] {
+				log.Fatal("Failed to parse secret store for KES secret!")
+				return &e
+			}
+		}
+	} else if len(dataFrom) > 0 {
+		for _, d := range dataFrom {
+			if prefix == "" {
+				pref := strings.Split(d, "/")[0]
+				prefix = pref
+			}
+			if prefix != strings.Split(d, "/")[0] {
+				log.Fatal("Failed to parse secret store for KES secret!")
+				return &e
+			}
+		}
+	} else {
+		// no data to read
+		log.Fatal("Failed to parse secret store for KES secret!")
+		return &e
+	}
+
+	return &prefix
+}
+
 func parseSpecifics(K apis.KESExternalSecret, E api.ExternalSecret) (api.ExternalSecret, error) {
 	backend := K.Spec.BackendType
 	ans := E
@@ -240,12 +266,12 @@ func parseSpecifics(K apis.KESExternalSecret, E api.ExternalSecret) (api.Externa
 			}
 		}
 		for idx, dataFrom := range ans.Spec.DataFrom {
-			paths := strings.Split(dataFrom.Key, "/")
+			paths := strings.Split(dataFrom.Extract.Key, "/")
 			if paths[1] != "data" { // we have the good format like <vaultname>/data/<path>/<to>/<secret>
 				return E, errors.New("secret key not compatible with kv2 format (<vault>/data/<path>/<to>/<secret>)")
 			}
 			str := strings.Join(paths[2:], "/")
-			ans.Spec.DataFrom[idx].Key = str
+			ans.Spec.DataFrom[idx].Extract.Key = str
 
 		}
 	default:
@@ -279,8 +305,11 @@ func parseGenerals(K apis.KESExternalSecret, E api.ExternalSecret, options *apis
 		secret.Spec.Data = append(secret.Spec.Data, esoSecretData)
 	}
 	for _, kesSecretDataFrom := range K.Spec.DataFrom {
-		esoDataFrom := api.ExternalSecretDataRemoteRef{
-			Key: kesSecretDataFrom,
+		esoDataFrom := api.ExternalSecretDataFromRemoteRef{
+			Extract: &api.ExternalSecretDataRemoteRef{
+				Key: kesSecretDataFrom,
+			},
+			Find: nil, //&api.ExternalSecretFind{},
 		}
 		secret.Spec.DataFrom = append(secret.Spec.DataFrom, esoDataFrom)
 	}

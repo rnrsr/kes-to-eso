@@ -8,7 +8,7 @@ import (
 	"reflect"
 	"testing"
 
-	api "github.com/external-secrets/external-secrets/apis/externalsecrets/v1alpha1"
+	api "github.com/external-secrets/external-secrets/apis/externalsecrets/v1beta1"
 
 	esmeta "github.com/external-secrets/external-secrets/apis/meta/v1"
 	appsv1 "k8s.io/api/apps/v1"
